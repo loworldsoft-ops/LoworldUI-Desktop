@@ -12,7 +12,7 @@ const path = require('node:path');
 const { app, BrowserWindow, dialog, ipcMain, protocol, shell } = require('electron');
 const { loadAppPackage } = require('./app-package.cjs');
 const { SpeechRouter } = require('./speech/speech-router.cjs');
-const { devUrlFrom, isSameOrigin } = require('./dev-url.cjs');
+const { devUrlFrom, isSameOrigin, devAppFrom, devTitleFrom } = require('./dev-url.cjs');
 
 const SCHEME = 'loworld-app';
 const HOST = 'bundle';
@@ -62,6 +62,7 @@ let executionMode = 'LOCAL_ASSET';
 /** 개발 모드의 주소(dev-url.cjs). 있으면 번들 대신 개발 서버를 띄운다 */
 let devUrl = devUrlFrom(process.argv, process.env);
 const DEV_RETRY_MS = 1_000;
+const devTitle = devTitleFrom(process.argv);
 
 function sendToRenderer(message) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -295,7 +296,7 @@ function createWindow() {
   const iconPath = path.join(appPackage.appDir, 'icon.png');
 
   mainWindow = new BrowserWindow({
-    title: devUrl ? `${appPackage.appName} (개발)` : appPackage.appName,
+    title: devUrl ? `${devTitle || appPackage.appName} (개발)` : appPackage.appName,
     width: isLandscape ? 1280 : 1080,
     height: isLandscape ? 820 : 860,
     minWidth: 420,
@@ -329,6 +330,9 @@ function createWindow() {
     }, DEV_RETRY_MS);
   });
 
+  // 개발 모드에서는 어느 앱의 창인지 제목으로 알아야 한다. 페이지의 제목이 덮어쓰지 않게 한다
+  if (devUrl) mainWindow.on('page-title-updated', (event) => event.preventDefault());
+
   mainWindow.webContents.on('did-finish-load', () => {
     sendExecutionMode();
     sendEngines();
@@ -346,6 +350,8 @@ function createWindow() {
 // 떠 있는 창이 넘겨받은 주소를 다시 읽고 앞으로 나온다.
 let secondInstance = false;
 if (devUrl && !process.argv.includes('--smoke-test')) {
+  // 앱마다 저장 공간을 따로 둔다. 단일 실행 잠금도 저장 공간마다라서, 앱마다 창이 하나씩 뜬다
+  app.setPath('userData', path.join(app.getPath('appData'), `loworld-dev-${devAppFrom(process.argv)}`));
   if (!app.requestSingleInstanceLock()) {
     secondInstance = true;
     app.quit();

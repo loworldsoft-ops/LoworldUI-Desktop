@@ -40,4 +40,23 @@ function isSameOrigin(devUrl, target) {
   }
 }
 
-module.exports = { parseDevUrl, devUrlFrom, isSameOrigin };
+function argValue(argv, name) {
+  const arg = (argv || []).find((a) => typeof a === 'string' && a.startsWith(`--${name}=`));
+  return arg ? arg.slice(name.length + 3) : '';
+}
+
+/**
+ * 개발 모드로 띄운 앱의 이름표. 앱마다 창과 저장 공간(userData)을 따로 두는 데 쓴다.
+ * 그래서 여러 앱을 동시에 띄울 수 있고, 한 앱의 기록이 다른 앱에 섞이지 않는다. 폴더 이름이 되므로 글자를 좁힌다.
+ */
+function devAppFrom(argv) {
+  const id = argValue(argv, 'dev-app').toLowerCase();
+  return /^[a-z0-9][a-z0-9-]{0,40}$/.test(id) ? id : 'overview';
+}
+
+/** 창 제목(앱 이름과 버전). 없으면 빈 글 */
+function devTitleFrom(argv) {
+  return argValue(argv, 'dev-title').slice(0, 80);
+}
+
+module.exports = { parseDevUrl, devUrlFrom, isSameOrigin, devAppFrom, devTitleFrom };

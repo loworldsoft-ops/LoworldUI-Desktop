@@ -42,12 +42,12 @@ npm run build:desktop -- cheonma-1
 npm run build:desktop:mac -- cheonma-1
 npm run build:desktop:win -- cheonma-1
 
-# 묶은 번들(app/www)로 데스크톱 창 띄우기
-npm run desktop:start
+# 작업 중: 번들 대신 개발 서버를 띄운다. 고치면 창에 바로 반영된다
+npm run desktop:start                  # 쇼케이스(OS 화면, 4310)
+npm run desktop:start -- story-reader  # 앱 하나를 단독으로(앱마다 정해진 포트, 창과 저장 공간도 앱마다 따로)
 
-# 작업 중: 번들 대신 개발 서버(ng serve, 4310)를 띄운다. 고치면 창에 바로 반영된다
-npm run dev                 # 쇼케이스
-npm run dev -- story-reader # 쇼케이스에서 그 앱을 연다
+# 묶어 둔 번들(app/www)로 띄우기. 최신이 아니다(다시 묶어야 바뀐다)
+npm run desktop:bundle
 ```
 
 개발 모드는 `--dev-url=<주소>` 인자(또는 `LOWORLD_DEV_URL`)로 켠다(`src/dev-url.cjs`). 이 기기 안의 주소(localhost)만 받는다.

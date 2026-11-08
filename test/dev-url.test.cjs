@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseDevUrl, devUrlFrom, isSameOrigin } = require('../src/dev-url.cjs');
+const { parseDevUrl, devUrlFrom, isSameOrigin, devAppFrom, devTitleFrom } = require('../src/dev-url.cjs');
 
 test('이 기기 안의 http 주소만 개발 주소로 받는다', () => {
   assert.equal(parseDevUrl('http://localhost:4310/overview'), 'http://localhost:4310/overview');
@@ -23,4 +23,12 @@ test('개발 서버와 같은 출처만 창 안에서 연다', () => {
   assert.equal(isSameOrigin('http://localhost:4310/overview', 'http://localhost:4310/overview/story-reader'), true);
   assert.equal(isSameOrigin('http://localhost:4310/', 'http://localhost:5000/'), false);
   assert.equal(isSameOrigin('http://localhost:4310/', 'https://loworldsoft.com'), false);
+});
+
+test('앱 이름표는 폴더 이름으로 쓸 수 있는 글자만 받는다', () => {
+  assert.equal(devAppFrom(['--dev-app=story-reader']), 'story-reader');
+  assert.equal(devAppFrom(['--dev-app=../../etc']), 'overview');
+  assert.equal(devAppFrom([]), 'overview');
+  assert.equal(devTitleFrom(['--dev-title=스토리리더 0.6.4']), '스토리리더 0.6.4');
+  assert.equal(devTitleFrom([]), '');
 });
