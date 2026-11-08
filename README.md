@@ -42,9 +42,10 @@ npm run build:desktop -- cheonma-1
 npm run build:desktop:mac -- cheonma-1
 npm run build:desktop:win -- cheonma-1
 
-# 작업 중: 번들 대신 개발 서버를 띄운다. 고치면 창에 바로 반영된다
-npm run desktop:start                  # 쇼케이스(OS 화면, 4310)
-npm run desktop:start -- story-reader  # 앱 하나를 단독으로(앱마다 정해진 포트, 창과 저장 공간도 앱마다 따로)
+# 작업 중: 번들 대신 개발 서버를 띄운다. 고치면 창에 바로 반영된다(워크스페이스 루트에서)
+npm run desktop:list           # 앱마다 명령, 이름, 버전, 포트
+npm run desktop:overview       # 쇼케이스(OS 화면, 4310)
+npm run desktop:story-reader   # 앱 하나를 단독으로(앱마다 정해진 포트, 창과 저장 공간도 앱마다 따로)
 
 # 묶어 둔 번들(app/www)로 띄우기. 최신이 아니다(다시 묶어야 바뀐다)
 npm run desktop:bundle
