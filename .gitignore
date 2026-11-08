@@ -1,0 +1,9 @@
+node_modules/
+dist-electron/
+build-resources/
+app/www/
+app/models/
+app/app.native.json
+app/icon.png
+*.log
+.DS_Store

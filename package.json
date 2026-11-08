@@ -1,0 +1,23 @@
+{
+  "name": "loworld-ui-desktop",
+  "version": "0.4.1",
+  "private": true,
+  "description": "Loworld Desktop Shell (Electron + Supertonic 3 On-Device Neural TTS for macOS & Windows)",
+  "main": "src/main.cjs",
+  "scripts": {
+    "postinstall": "node scripts/ensure-binaries.mjs",
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "pack:dir": "node scripts/build-electron.mjs --dir",
+    "dist:mac": "node scripts/build-electron.mjs --mac",
+    "dist:win": "node scripts/build-electron.mjs --win",
+    "dist:all": "node scripts/build-electron.mjs --mac --win"
+  },
+  "dependencies": {
+    "sherpa-onnx-node": "1.13.8"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.12"
+  }
+}
