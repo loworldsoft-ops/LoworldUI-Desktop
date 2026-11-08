@@ -12,6 +12,7 @@ const path = require('node:path');
 const { app, BrowserWindow, dialog, ipcMain, protocol, shell } = require('electron');
 const { loadAppPackage } = require('./app-package.cjs');
 const { SpeechRouter } = require('./speech/speech-router.cjs');
+const { devUrlFrom, isSameOrigin } = require('./dev-url.cjs');
 
 const SCHEME = 'loworld-app';
 const HOST = 'bundle';
@@ -58,6 +59,9 @@ let mainWindow = null;
 let appPackage = null;
 let speechRouter = null;
 let executionMode = 'LOCAL_ASSET';
+/** 개발 모드의 주소(dev-url.cjs). 있으면 번들 대신 개발 서버를 띄운다 */
+let devUrl = devUrlFrom(process.argv, process.env);
+const DEV_RETRY_MS = 1_000;
 
 function sendToRenderer(message) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -275,6 +279,10 @@ function localAppUrl() {
 
 function loadCurrentAppUrl() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (devUrl) {
+    mainWindow.loadURL(devUrl);
+    return;
+  }
   const targetUrl =
     executionMode === 'REMOTE_WEB' && appPackage.remoteUrl
       ? appPackage.remoteUrl
@@ -287,7 +295,7 @@ function createWindow() {
   const iconPath = path.join(appPackage.appDir, 'icon.png');
 
   mainWindow = new BrowserWindow({
-    title: appPackage.appName,
+    title: devUrl ? `${appPackage.appName} (개발)` : appPackage.appName,
     width: isLandscape ? 1280 : 1080,
     height: isLandscape ? 820 : 860,
     minWidth: 420,
@@ -306,11 +314,19 @@ function createWindow() {
 
   // 외부 링크는 시스템 기본 브라우저로 위임
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (!url.startsWith(`${SCHEME}://`)) {
+    if (!url.startsWith(`${SCHEME}://`) && !(devUrl && isSameOrigin(devUrl, url))) {
       shell.openExternal(url).catch(() => {});
       return { action: 'deny' };
     }
     return { action: 'allow' };
+  });
+
+  // 개발 서버가 아직 뜨지 않았거나 다시 켜지는 중이면 붙을 때까지 다시 읽는다
+  mainWindow.webContents.on('did-fail-load', (_event, _code, _desc, failedUrl, isMainFrame) => {
+    if (!devUrl || !isMainFrame || !isSameOrigin(devUrl, failedUrl)) return;
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(failedUrl);
+    }, DEV_RETRY_MS);
   });
 
   mainWindow.webContents.on('did-finish-load', () => {
@@ -326,7 +342,27 @@ function createWindow() {
   });
 }
 
+// 개발 모드에서는 창을 하나만 둔다. 작업할 때마다 다시 실행하면 새 창을 열지 않고
+// 떠 있는 창이 넘겨받은 주소를 다시 읽고 앞으로 나온다.
+let secondInstance = false;
+if (devUrl && !process.argv.includes('--smoke-test')) {
+  if (!app.requestSingleInstanceLock()) {
+    secondInstance = true;
+    app.quit();
+  } else {
+    app.on('second-instance', (_event, argv) => {
+      devUrl = devUrlFrom(argv, {}) || devUrl;
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      loadCurrentAppUrl();
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    });
+  }
+}
+
 app.whenReady().then(async () => {
+  if (secondInstance) return;
   appPackage = loadAppPackage();
   app.setName(appPackage.appName);
 

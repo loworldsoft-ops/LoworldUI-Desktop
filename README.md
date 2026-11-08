@@ -42,9 +42,16 @@ npm run build:desktop -- cheonma-1
 npm run build:desktop:mac -- cheonma-1
 npm run build:desktop:win -- cheonma-1
 
-# 개발 모드로 데스크톱 창 바로 띄우기
+# 묶은 번들(app/www)로 데스크톱 창 띄우기
 npm run desktop:start
+
+# 작업 중: 번들 대신 개발 서버(ng serve, 4310)를 띄운다. 고치면 창에 바로 반영된다
+npm run dev                 # 쇼케이스
+npm run dev -- story-reader # 쇼케이스에서 그 앱을 연다
 ```
+
+개발 모드는 `--dev-url=<주소>` 인자(또는 `LOWORLD_DEV_URL`)로 켠다(`src/dev-url.cjs`). 이 기기 안의 주소(localhost)만 받는다.
+개발 모드에서는 창이 하나만 뜬다. 다시 실행하면 떠 있는 창이 새 주소를 읽고 앞으로 나온다. 개발 서버가 다시 켜지는 동안에는 붙을 때까지 1초마다 다시 읽는다.
 
 또는 `LoworldUI-Desktop` 폴더에서 직접 단계별로 실행할 수 있다:
 
