@@ -12,7 +12,7 @@ const path = require('node:path');
 const { app, BrowserWindow, dialog, ipcMain, protocol, shell } = require('electron');
 const { loadAppPackage } = require('./app-package.cjs');
 const { SpeechRouter } = require('./speech/speech-router.cjs');
-const { devUrlFrom, isSameOrigin, devAppFrom, devTitleFrom } = require('./dev-url.cjs');
+const { devUrlFrom, isSameOrigin, devAppFrom, devTitleFrom, devReloadFrom } = require('./dev-url.cjs');
 
 const SCHEME = 'loworld-app';
 const HOST = 'bundle';
@@ -357,6 +357,11 @@ if (devUrl && !process.argv.includes('--smoke-test')) {
     app.quit();
   } else {
     app.on('second-instance', (_event, argv) => {
+      if (devReloadFrom(argv)) {
+        // 콘텐츠를 다시 묶었다. 지금 화면을 그 자리에서 다시 읽기만 한다
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.reload();
+        return;
+      }
       devUrl = devUrlFrom(argv, {}) || devUrl;
       if (!mainWindow || mainWindow.isDestroyed()) return;
       loadCurrentAppUrl();

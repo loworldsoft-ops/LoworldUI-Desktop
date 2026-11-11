@@ -59,4 +59,12 @@ function devTitleFrom(argv) {
   return argValue(argv, 'dev-title').slice(0, 80);
 }
 
-module.exports = { parseDevUrl, devUrlFrom, isSameOrigin, devAppFrom, devTitleFrom };
+/**
+ * 떠 있는 창에 "다시 읽기만 하라"는 두 번째 실행인지. 콘텐츠를 다시 묶을 때마다 dev-desktop.mjs가 보낸다.
+ * 주소를 바꾸지 않고, 창을 앞으로 꺼내지도 않는다(편집기에서 글을 쓰는 중에 창이 끼어들지 않게).
+ */
+function devReloadFrom(argv) {
+  return (argv || []).includes('--dev-reload');
+}
+
+module.exports = { parseDevUrl, devUrlFrom, isSameOrigin, devAppFrom, devTitleFrom, devReloadFrom };
