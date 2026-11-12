@@ -41,6 +41,11 @@ class SpeechRouter {
     /** 현재 진행 중인 발화 상태 */
     this.currentSession = null;
     this.sessionSeq = 0;
+    /**
+     * 미리 합성해 둔 다음 글의 첫 문장. { key, promise }. 웹이 다음에 읽을 글(next)을 함께 보내면 지금 글을 다 합성한 뒤
+     * 그 첫 문장을 만들어 둔다. 글 사이에서 합성을 기다리며 조용히 끊기지 않게(2026-11-12)
+     */
+    this.prefetched = null;
   }
 
   _loadPrefs() {
@@ -129,19 +134,53 @@ class SpeechRouter {
       const normalized = id || AUTO;
       this.selectedSpeak = normalized;
       this._savePref('speech-engine-speak', normalized);
-      this.stop();
+      // 읽던 글은 끝내지 않는다. 끝내면 웹이 다음 토막으로 넘어가 읽던 곳을 건너뛴다(사용자의 지적, 2026-11-12).
+      // 소리만 끊고, 새 목소리가 준비되면 같은 글을 처음부터 다시 읽는다
+      const interrupted = this._interrupt();
+      this.prefetched = null;
       if (normalized.startsWith('supertonic:') || normalized === AUTO) {
         if (!this.sherpaReady && this.sherpa.isModelPresent()) {
           this.sherpaReady = await this.sherpa.prepare();
         }
       }
       this._resolveActiveSpeak();
+      if (interrupted && !this.currentSession) void this.speak(interrupted.req, interrupted.callbacks);
     } else if (kind === 'listen') {
       const normalized = id || AUTO;
       this.selectedListen = normalized;
       this._savePref('speech-engine-listen', normalized);
     }
     return this.enginesPayload();
+  }
+
+  /** 지금 읽기의 소리만 끊고 완료는 알리지 않는다. 다시 읽을 요청과 콜백을 돌려준다 */
+  _interrupt() {
+    const prev = this.currentSession;
+    if (!prev) return null;
+    this.currentSession = null;
+    prev.cancelled = true;
+    prev.callbacks.onCancelAudio(prev.utteranceId);
+    return { req: prev.req, callbacks: prev.callbacks };
+  }
+
+  /** 합성 한 번. 미리 만들어 둔 것이 같은 글이면 그것을 쓴다 */
+  _synthesize(text, sid, rate) {
+    const key = `${sid}|${rate}|${text}`;
+    const cached = this.prefetched;
+    if (cached && cached.key === key) {
+      this.prefetched = null;
+      return cached.promise;
+    }
+    return this.sherpa.synthesizePiece(text, sid, rate);
+  }
+
+  _prefetch(text, sid, rate) {
+    const first = splitForSpeech(text)[0];
+    if (!first) return;
+    const key = `${sid}|${rate}|${first.text}`;
+    if (this.prefetched && this.prefetched.key === key) return;
+    const promise = this.sherpa.synthesizePiece(first.text, sid, rate).catch(() => null);
+    this.prefetched = { key, promise };
   }
 
   /**
@@ -200,6 +239,8 @@ class SpeechRouter {
       utteranceId,
       cancelled: false,
       finishOnce,
+      req,
+      callbacks,
     };
     this.currentSession = session;
 
@@ -224,7 +265,7 @@ class SpeechRouter {
       if (session.cancelled) return;
       const piece = pieces[i];
       try {
-        const audio = await this.sherpa.synthesizePiece(piece.text, sid, rate);
+        const audio = i === 0 ? await this._synthesize(piece.text, sid, rate) : await this.sherpa.synthesizePiece(piece.text, sid, rate);
         if (session.cancelled) return;
 
         if (!audio || !audio.samples || audio.samples.length === 0) {
@@ -258,6 +299,8 @@ class SpeechRouter {
         }
       }
     }
+    // 이 글의 문장을 다 만들었다. 재생이 끝나기 전에 다음 글의 첫 문장을 만들어 둔다
+    if (!session.cancelled && req.next) this._prefetch(String(req.next), sid, rate);
   }
 
   /**

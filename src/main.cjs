@@ -211,9 +211,10 @@ function registerIpcHandlers() {
         const id = String(payload.id || '');
         const text = String(payload.text || '');
         const rate = Number(payload.rate) > 0 ? Number(payload.rate) : 1.0;
+        const next = typeof payload.next === 'string' ? payload.next : '';
 
         await speechRouter.speak(
-          { id, text, rate },
+          { id, text, rate, next },
           {
             onAudioChunk(chunk) {
               if (!mainWindow || mainWindow.isDestroyed()) return;
