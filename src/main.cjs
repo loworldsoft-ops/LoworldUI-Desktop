@@ -227,10 +227,12 @@ function registerIpcHandlers() {
               if (!mainWindow || mainWindow.isDestroyed()) return;
               mainWindow.webContents.send('loworld:system-speak', sysPayload);
             },
-            onSpoken(spokenId) {
+            onSpoken() {
+              // 웹이 보낸 번호를 받은 모양 그대로(숫자) 돌려준다. 안드로이드 셸과 같은 계약이다.
+              // 글자로 돌려주면 웹이 "다 읽었다"를 알아보지 못해 다음 토막을 기다리며 멈춘다(2026-11-12)
               sendToRenderer({
                 type: 'speech.spoken',
-                data: { id: spokenId },
+                data: { id: payload.id },
               });
             },
           },
