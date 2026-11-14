@@ -311,7 +311,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      // 미리 불러오는 스크립트(preload.cjs)는 electron의 contextBridge·ipcRenderer·webFrame만 쓴다. 그래서 Node 권한 없이 가둔다(2026-11-14 점검)
+      sandbox: true,
       autoplayPolicy: 'no-user-gesture-required',
     },
   });
