@@ -10,6 +10,10 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { MODEL_FILES } = require('./supertonic-voices.cjs');
+const { timeStretch } = require('./time-stretch.cjs');
+
+/** 모델에 맡기는 빠르기의 상한. 안드로이드(SherpaSpeech.kt의 MODEL_SPEED_MAX)와 같다 */
+const MODEL_SPEED_MAX = 1.0;
 
 /**
  * Windows에서 app.asar.unpacked 내부의 sherpa-onnx-win-x64/sherpa-onnx.node를 로드할 때
@@ -159,23 +163,27 @@ class SherpaSupertonicEngine {
     if (!ok || !this.tts) return null;
 
     const clampedSpeed = Math.max(0.25, Math.min(4.0, Number.isFinite(rate) && rate > 0 ? rate : 1.0));
+    // 모델에는 1배까지만 맡긴다. 더 빠르게 하라면 음절을 뭉개거나 빼먹어 끝이 잘려 들린다(time-stretch.cjs).
+    // 넘는 만큼은 만든 소리를 음높이 그대로 당긴다. 느리게는 모델에 맡긴다(늘이는 쪽은 뭉개지지 않는다)
+    const modelSpeed = Math.min(clampedSpeed, MODEL_SPEED_MAX);
     const request = {
       text,
       sid,
-      speed: clampedSpeed,
+      speed: modelSpeed,
       enableExternalBuffer: false,
       generationConfig: {
         sid,
-        speed: clampedSpeed,
+        speed: modelSpeed,
         numSteps: 8,
         extra: { lang: 'ko' },
       },
     };
 
-    if (typeof this.tts.generateAsync === 'function') {
-      return await this.tts.generateAsync(request);
-    }
-    return this.tts.generate(request);
+    const audio =
+      typeof this.tts.generateAsync === 'function' ? await this.tts.generateAsync(request) : this.tts.generate(request);
+    const stretch = clampedSpeed / modelSpeed;
+    if (!audio || !audio.samples || stretch <= 1) return audio;
+    return { samples: timeStretch(audio.samples, audio.sampleRate, stretch), sampleRate: audio.sampleRate };
   }
 }
 
